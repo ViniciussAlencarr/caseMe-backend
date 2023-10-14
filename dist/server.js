@@ -1,95 +1,382 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __defProps = Object.defineProperties;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __propIsEnum = Object.prototype.propertyIsEnumerable;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues = (a, b) => {
+  for (var prop in b || (b = {}))
+    if (__hasOwnProp.call(b, prop))
+      __defNormalProp(a, prop, b[prop]);
+  if (__getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(b)) {
+      if (__propIsEnum.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    }
+  return a;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
 };
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const express_2 = require("express");
-const cors_1 = __importDefault(require("cors"));
-const getDateTIme_1 = require("./utils/getDateTIme");
-/* TODO: alterar para trazer SOMENTE os campos, não filtrar por eles. Ex: trazer o bairro, cidade e estado enquanto digita */
-const supplier_1 = require("./database/tables/supplier");
-const supplierSubCategory_1 = require("./database/tables/supplierSubCategory");
-const app = (0, express_1.default)();
-const route = (0, express_2.Router)();
-app.use(express_1.default.json());
-app.use((0, cors_1.default)());
-// Fornecedor
-// get all
-route.get('/suppliers', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const suppliers = yield (0, supplier_1.getSuppliers)();
-    res.status(200).send(suppliers);
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __async = (__this, __arguments, generator) => {
+  return new Promise((resolve, reject) => {
+    var fulfilled = (value) => {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var rejected = (value) => {
+      try {
+        step(generator.throw(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+    step((generator = generator.apply(__this, __arguments)).next());
+  });
+};
+
+// src/server.ts
+var import_express = __toESM(require("express"));
+var import_express2 = require("express");
+var import_cors = __toESM(require("cors"));
+
+// src/utils/getDateTIme.ts
+var padTo2Digits = (num) => {
+  return num.toString().padStart(2, "0");
+};
+var formatDate = (date) => {
+  return [
+    date.getFullYear(),
+    padTo2Digits(date.getMonth() + 1),
+    padTo2Digits(date.getDate())
+  ].join("-") + " " + [
+    padTo2Digits(date.getHours()),
+    padTo2Digits(date.getMinutes()),
+    padTo2Digits(date.getSeconds())
+  ].join(":");
+};
+
+// src/database/service.ts
+var import_mysql2 = __toESM(require("mysql2"));
+
+// src/database/config.ts
+require("dotenv").config();
+var config_default = {
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
+};
+
+// src/database/service.ts
+var db = import_mysql2.default.createConnection(config_default).promise();
+
+// src/database/tables/supplier.ts
+var tableName = "Fornecedor";
+var secondTableName = "SubcategoriaFornecedor";
+var thirdTableName = "FornecedorSubcategoriaFornecedor";
+var getSuppliers = () => __async(void 0, null, function* () {
+  try {
+    const [rows] = yield db.query(`SELECT * FROM ${tableName};`);
+    return rows;
+  } catch (err) {
+    console.log(err);
+  }
+});
+var getSupplierByNeighborhoodCityState = (neighborhood, city, state) => __async(void 0, null, function* () {
+  try {
+    const [rows] = yield db.query(`
+        SELECT bairro, cidade, estado FROM ${tableName}
+        WHERE bairro LIKE ? OR cidade LIKE ? OR estado LIKE ?;`, [`${neighborhood}%`, `${city}%`, `${state}%`]);
+    return rows;
+  } catch (err) {
+    console.log(err);
+  }
+});
+var getSupplierByCompanyCategorySubCategory = (company, category, subCategory) => __async(void 0, null, function* () {
+  var _a, _b;
+  try {
+    const [supplierResponse] = yield db.query(`SELECT supplier.id, supplier.empresa, supplier.Categorias
+            FROM ${tableName} as supplier WHERE 
+            supplier.empresa LIKE ? OR supplier.Categorias LIKE ?;`, [`${company}%`, `${category}%`, `${subCategory}%`]);
+    const [subCategoryResponse] = yield db.query(`SELECT subCategorySupplier.nome, subCategorySupplier.id
+            FROM ${secondTableName} as subCategorySupplier WHERE 
+            subCategorySupplier.nome LIKE ?;`, [`${subCategory}%`]);
+    const [rows] = yield db.query(`
+            SELECT * FROM ${thirdTableName}
+            WHERE subcategoriafornecedor_id = ? OR fornecedor_id = ?;`, [(_a = subCategoryResponse[0]) == null ? void 0 : _a.id, (_b = supplierResponse[0]) == null ? void 0 : _b.id]);
+    if (Object.keys(rows).length != 0) {
+      const supplierBySubCategory = yield db.query(`SELECT *
+            FROM ${tableName} WHERE id = ?;`, [rows[0].fornecedor_id]);
+      return supplierBySubCategory[0];
+    }
+    return Object.assign(supplierResponse[0], subCategoryResponse[0]);
+  } catch (err) {
+    console.log(err);
+  }
+});
+var searchSupplierByResults = (place, category, caseMeMention) => __async(void 0, null, function* () {
+  var _a, _b, _c, _d;
+  try {
+    if (caseMeMention == "true") {
+      const supplierResponse = yield db.query(`
+                SELECT * FROM ${tableName}
+                WHERE numTagsRef > 0 AND
+                (bairro LIKE ?
+                OR cidade LIKE ? 
+                OR estado LIKE ?) AND
+                Categorias LIKE ?;`, [`${place}%`, `${place}%`, `${place}%`, `${category}%`]);
+      const subCategoryResponse = yield db.query(`SELECT subCategorySupplier.nome
+                FROM ${secondTableName} as subCategorySupplier WHERE 
+                subCategorySupplier.nome LIKE ?;`, [`${category}%`]);
+      const [rows] = yield db.query(`
+                SELECT * FROM ${thirdTableName}
+                WHERE subcategoriafornecedor_id = ? OR fornecedor_id = ?;`, [(_a = subCategoryResponse[0]) == null ? void 0 : _a.id, (_b = supplierResponse[0]) == null ? void 0 : _b.id]);
+      if (Object.keys(rows).length != 0) {
+        const supplierBySubCategory = yield db.query(`SELECT *
+                    FROM ${tableName} WHERE id = ?;`, [rows[0].fornecedor_id]);
+        return supplierBySubCategory[0];
+      }
+      return Object.assign(supplierResponse[0], subCategoryResponse[0]);
+    } else {
+      const [supplierResponse] = yield db.query(`
+                SELECT * FROM ${tableName}
+                WHERE (bairro LIKE ?
+                OR cidade LIKE ? 
+                OR estado LIKE ?) AND
+                Categorias LIKE ?;`, [`${place}%`, `${place}%`, `${place}%`, `${category}%`]);
+      const [subCategoryResponse] = yield db.query(`SELECT subCategorySupplier.id, subCategorySupplier.nome
+                FROM ${secondTableName} as subCategorySupplier WHERE 
+                subCategorySupplier.nome LIKE ?;`, [`${category}%`]);
+      const [rows] = yield db.query(`
+                SELECT * FROM ${thirdTableName}
+                WHERE subcategoriafornecedor_id = ? OR fornecedor_id = ?;`, [(_c = subCategoryResponse[0]) == null ? void 0 : _c.id, (_d = supplierResponse[0]) == null ? void 0 : _d.id]);
+      if (Object.keys(rows).length != 0) {
+        const supplierBySubCategory = yield db.query(`SELECT *
+                    FROM ${tableName} WHERE id = ?;`, [rows[0].fornecedor_id]);
+        return supplierBySubCategory[0];
+      }
+      return Object.assign(supplierResponse, subCategoryResponse);
+    }
+  } catch (err) {
+    console.log(err);
+  }
+});
+var getSupplierByCity = (city) => __async(void 0, null, function* () {
+  try {
+    const [rows] = yield db.query(`
+        SELECT * FROM ${tableName}
+        WHERE cidade LIKE ?;`, [`${city}%`]);
+    return rows;
+  } catch (err) {
+    console.log(err);
+  }
+});
+var getSupplierByState = (state) => __async(void 0, null, function* () {
+  try {
+    const [rows] = yield db.query(`
+        SELECT * FROM ${tableName}
+        WHERE estado LIKE ?;`, [`${state}%`]);
+    return rows;
+  } catch (err) {
+    console.log(err);
+  }
+});
+var getSupplier = (id) => __async(void 0, null, function* () {
+  try {
+    const [rows] = yield db.query(`
+        SELECT * FROM ${tableName}
+        WHERE id = ?;`, [id]);
+    return rows;
+  } catch (err) {
+    console.log(err);
+  }
+});
+var getAllSubCategories = (fornecedorId) => __async(void 0, null, function* () {
+  try {
+    const [rows] = yield db.query(`
+        SELECT * FROM ${thirdTableName}
+        WHERE fornecedor_id = ?;`, [fornecedorId]);
+    if (Object.keys(rows).length != 0) {
+      const response = yield db.query(`
+            SELECT * FROM ${secondTableName}
+            WHERE id = ?;`, [rows[0].subcategoriafornecedor_id]);
+      return response[0];
+    }
+    return [];
+  } catch (err) {
+    console.log(err);
+  }
+});
+var createSupplier = (data) => __async(void 0, null, function* () {
+  try {
+    const [result] = yield db.query(`
+        INSERT INTO ${tableName} (
+            empresa,
+            website,
+            contatoTelefone,
+            cnpj,
+            user_id,
+            criado,
+            modificado,
+            imagem,
+            descricao,
+            contatoEmail,
+            cep,
+            logradouro,
+            bairro,
+            cidade,
+            estado,
+            numero,
+            visivel,
+            slug,
+            contatoNome2,
+            contatoEmail2,
+            contatoTelefone2,
+            contatoTelefoneA2,
+            contatoNome3,
+            contatoEmail3,
+            contatoTelefone3,
+            contatoTelefoneA3,
+            metadescricao,
+            origemCadastro,
+            Categorias,
+            facebook,
+            instagram,
+            twitter,
+            pinterest,
+            youtube,
+            vimeo,
+            numTagsRef)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `, [
+      data.empresa,
+      data.website,
+      data.contatoTelefone,
+      data.cnpj,
+      data.user_id,
+      data.criado,
+      data.modificado,
+      data.imagem,
+      data.descricao,
+      data.contatoEmail,
+      data.cep,
+      data.logradouro,
+      data.bairro,
+      data.cidade,
+      data.estado,
+      data.numero,
+      data.visivel,
+      data.slug,
+      data.contatoNome2,
+      data.contatoEmail2,
+      data.contatoTelefone2,
+      data.contatoTelefoneA2,
+      data.contatoNome3,
+      data.contatoEmail3,
+      data.contatoTelefone3,
+      data.contatoTelefoneA3,
+      data.metadescricao,
+      data.origemCadastro,
+      data.Categorias,
+      data.facebook,
+      data.instagram,
+      data.twitter,
+      data.pinterest,
+      data.youtube,
+      data.vimeo,
+      data.numTagsRef
+    ]);
+    let id = result.insertId;
+    return getSupplier(id);
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+// src/server.ts
+var app = (0, import_express.default)();
+var route = (0, import_express2.Router)();
+app.use(import_express.default.json());
+app.use((0, import_cors.default)());
+route.get("/suppliers", (req, res) => __async(exports, null, function* () {
+  const suppliers = yield getSuppliers();
+  res.status(200).send(suppliers);
 }));
-// get one
-route.get('/supplier/:id/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const id = req.params.id;
-    const supplier = yield (0, supplier_1.getSupplier)(id);
-    res.status(200).send(supplier);
+route.get("/supplier/:id/", (req, res) => __async(exports, null, function* () {
+  const id = req.params.id;
+  const supplier = yield getSupplier(id);
+  res.status(200).send(supplier);
 }));
-// search by city 
-route.get('/supplier-by-city/:city', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const city = req.params.city;
-    const supplier = yield (0, supplier_1.getSupplierByCity)(city);
-    res.status(200).send(supplier);
+route.get("/supplier-by-city/:city", (req, res) => __async(exports, null, function* () {
+  const city = req.params.city;
+  const supplier = yield getSupplierByCity(city);
+  res.status(200).send(supplier);
 }));
-// search by neighborhood, city or state
-route.get('/supplier-by-neighborhood-city-state/:neighborhood/:city/:state', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const neighborhood = req.params.neighborhood;
-    const city = req.params.city;
-    const state = req.params.state;
-    const supplier = yield (0, supplier_1.getSupplierByNeighborhoodCityState)(neighborhood, city, state);
-    res.status(200).send(supplier);
+route.get("/supplier-by-neighborhood-city-state/:neighborhood/:city/:state", (req, res) => __async(exports, null, function* () {
+  const neighborhood = req.params.neighborhood;
+  const city = req.params.city;
+  const state = req.params.state;
+  const supplier = yield getSupplierByNeighborhoodCityState(neighborhood, city, state);
+  res.status(200).send(supplier);
 }));
-// search by neighborhood, city or state
-route.get('/supplier-by-company-category-sub_category/:company/:category/:sub_category', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const company = req.params.company;
-    const category = req.params.category;
-    const subCategory = req.params.sub_category;
-    const supplier = yield (0, supplier_1.getSupplierByCompanyCategorySubCategory)(company, category, subCategory);
-    res.status(200).send(supplier);
+route.get("/supplier-by-company-category-sub_category/:company/:category/:sub_category", (req, res) => __async(exports, null, function* () {
+  const company = req.params.company;
+  const category = req.params.category;
+  const subCategory = req.params.sub_category;
+  const supplier = yield getSupplierByCompanyCategorySubCategory(company, category, subCategory);
+  res.status(200).send(supplier);
 }));
-// search results
-route.get('/search-results/:place/:category', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const caseMeMention = req.query.caseMeMention;
-    const place = req.params.place;
-    const category = req.params.category;
-    const supplier = yield (0, supplier_1.searchSupplierByResults)(place, category, caseMeMention);
-    res.status(200).send(supplier);
+route.get("/search-results/:place/:category", (req, res) => __async(exports, null, function* () {
+  const caseMeMention = req.query.caseMeMention;
+  const place = req.params.place;
+  const category = req.params.category;
+  const supplier = yield searchSupplierByResults(place, category, caseMeMention);
+  res.status(200).send(supplier);
 }));
-// search by state
-route.get('/supplier-by-state/:state', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const state = req.params.state;
-    const supplier = yield (0, supplier_1.getSupplierByState)(state);
-    res.status(200).send(supplier);
+route.get("/supplier-by-state/:state", (req, res) => __async(exports, null, function* () {
+  const state = req.params.state;
+  const supplier = yield getSupplierByState(state);
+  res.status(200).send(supplier);
 }));
-// get all subcategories
-route.get('/supplier/get-all-subcategories/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const id = req.params.id;
-    const supplier = yield (0, supplier_1.getSupplierByState)(id);
-    res.status(200).send(supplier);
+route.get("/supplier/get-all-subcategories/:id", (req, res) => __async(exports, null, function* () {
+  const id = req.params.id;
+  const supplier = yield getAllSubCategories(id);
+  res.status(200).send(supplier);
 }));
-// create
-route.post('/supplier/create', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const date = new Date();
-    const data = req.body;
-    const params = Object.assign(Object.assign({}, data), { criado: (0, getDateTIme_1.formatDate)(date), modificado: (0, getDateTIme_1.formatDate)(date) });
-    const supplier = yield (0, supplier_1.createSupplier)(params);
-    res.status(200).send(supplier);
-}));
-// SubCategoriaFornecedor
-// search by state
-route.get('/suppliersSubCategory', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const suppliers = yield (0, supplierSubCategory_1.getSubCategories)();
-    res.status(200).send(suppliers);
+route.post("/supplier/create", (req, res) => __async(exports, null, function* () {
+  const date = /* @__PURE__ */ new Date();
+  const data = req.body;
+  const params = __spreadProps(__spreadValues({}, data), {
+    criado: formatDate(date),
+    modificado: formatDate(date)
+  });
+  const supplier = yield createSupplier(params);
+  res.status(200).send(supplier);
 }));
 app.use(route);
-app.listen(3333, () => 'server running on port 3333');
+app.listen(process.env.PORT ? Number(process.env.PORT) : 3333, () => "server running on port 3333");
