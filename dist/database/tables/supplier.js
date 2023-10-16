@@ -52,6 +52,7 @@ var supplier_exports = {};
 __export(supplier_exports, {
   createSupplier: () => createSupplier,
   getAllSubCategories: () => getAllSubCategories,
+  getAllSubCategoriesBySupplier: () => getAllSubCategoriesBySupplier,
   getSupplier: () => getSupplier,
   getSupplierByCity: () => getSupplierByCity,
   getSupplierByCompanyCategorySubCategory: () => getSupplierByCompanyCategorySubCategory,
@@ -93,76 +94,47 @@ var getSupplierByNeighborhoodCityState = (neighborhood, city, state) => __async(
   try {
     const [rows] = yield db.query(`
         SELECT bairro, cidade, estado FROM ${tableName}
-        WHERE bairro LIKE ? OR cidade LIKE ? OR estado LIKE ?;`, [`${neighborhood}%`, `${city}%`, `${state}%`]);
+        WHERE (bairro LIKE ? OR (cidade LIKE ? OR (estado LIKE ?)));`, [`%${neighborhood}%`, `%${city}%`, `%${state}%`]);
     return rows;
   } catch (err) {
     console.log(err);
   }
 });
 var getSupplierByCompanyCategorySubCategory = (company, category, subCategory) => __async(void 0, null, function* () {
-  var _a, _b;
   try {
-    const [supplierResponse] = yield db.query(`SELECT supplier.id, supplier.empresa, supplier.Categorias
-            FROM ${tableName} as supplier WHERE 
-            supplier.empresa LIKE ? OR supplier.Categorias LIKE ?;`, [`${company}%`, `${category}%`, `${subCategory}%`]);
-    const [subCategoryResponse] = yield db.query(`SELECT subCategorySupplier.nome, subCategorySupplier.id
-            FROM ${secondTableName} as subCategorySupplier WHERE 
-            subCategorySupplier.nome LIKE ?;`, [`${subCategory}%`]);
-    const [rows] = yield db.query(`
-            SELECT * FROM ${thirdTableName}
-            WHERE subcategoriafornecedor_id = ? OR fornecedor_id = ?;`, [(_a = subCategoryResponse[0]) == null ? void 0 : _a.id, (_b = supplierResponse[0]) == null ? void 0 : _b.id]);
-    if (Object.keys(rows).length != 0) {
-      const supplierBySubCategory = yield db.query(`SELECT *
-            FROM ${tableName} WHERE id = ?;`, [rows[0].fornecedor_id]);
-      return supplierBySubCategory[0];
-    }
-    return Object.assign(supplierResponse[0], subCategoryResponse[0]);
+    const [supplierResponse] = yield db.query(`SELECT DISTINCT empresa, Categorias
+            FROM ${tableName} WHERE 
+            (empresa LIKE ? OR (Categorias LIKE ?));`, [`%${company}%`, `%${category}%`]);
+    const [subCategoryResponse] = yield db.query(`SELECT nome FROM ${secondTableName} WHERE 
+            nome LIKE ?;`, [`%${subCategory}%`]);
+    return Object.assign(supplierResponse, subCategoryResponse);
   } catch (err) {
     console.log(err);
   }
 });
 var searchSupplierByResults = (place, category, caseMeMention) => __async(void 0, null, function* () {
-  var _a, _b, _c, _d;
   try {
     if (caseMeMention == "true") {
-      const supplierResponse = yield db.query(`
-                SELECT * FROM ${tableName}
-                WHERE numTagsRef > 0 AND
-                (bairro LIKE ?
-                OR cidade LIKE ? 
-                OR estado LIKE ?) AND
-                Categorias LIKE ?;`, [`${place}%`, `${place}%`, `${place}%`, `${category}%`]);
-      const subCategoryResponse = yield db.query(`SELECT subCategorySupplier.nome
-                FROM ${secondTableName} as subCategorySupplier WHERE 
-                subCategorySupplier.nome LIKE ?;`, [`${category}%`]);
-      const [rows] = yield db.query(`
-                SELECT * FROM ${thirdTableName}
-                WHERE subcategoriafornecedor_id = ? OR fornecedor_id = ?;`, [(_a = subCategoryResponse[0]) == null ? void 0 : _a.id, (_b = supplierResponse[0]) == null ? void 0 : _b.id]);
-      if (Object.keys(rows).length != 0) {
-        const supplierBySubCategory = yield db.query(`SELECT *
-                    FROM ${tableName} WHERE id = ?;`, [rows[0].fornecedor_id]);
-        return supplierBySubCategory[0];
-      }
-      return Object.assign(supplierResponse[0], subCategoryResponse[0]);
+      const [supplierResponse] = yield db.query(
+        `
+                SELECT * FROM ${tableName} as t1, ${secondTableName} as subCategorySupplier
+                WHERE numTagsRef > 0 AND 
+                (t1.bairro LIKE ?
+                OR (t1.cidade LIKE ? 
+                OR (t1.estado LIKE ?))) AND (t1.empresa LIKE ? OR (t1.Categorias LIKE ? OR (subCategorySupplier.nome LIKE ?)));`,
+        [`%${place}%`, `%${place}%`, `%${place}%`, `%${category}%`, `%${category}%`, `%${category}%`]
+      );
+      return supplierResponse;
     } else {
-      const [supplierResponse] = yield db.query(`
-                SELECT * FROM ${tableName}
-                WHERE (bairro LIKE ?
-                OR cidade LIKE ? 
-                OR estado LIKE ?) AND
-                Categorias LIKE ?;`, [`${place}%`, `${place}%`, `${place}%`, `${category}%`]);
-      const [subCategoryResponse] = yield db.query(`SELECT subCategorySupplier.id, subCategorySupplier.nome
-                FROM ${secondTableName} as subCategorySupplier WHERE 
-                subCategorySupplier.nome LIKE ?;`, [`${category}%`]);
-      const [rows] = yield db.query(`
-                SELECT * FROM ${thirdTableName}
-                WHERE subcategoriafornecedor_id = ? OR fornecedor_id = ?;`, [(_c = subCategoryResponse[0]) == null ? void 0 : _c.id, (_d = supplierResponse[0]) == null ? void 0 : _d.id]);
-      if (Object.keys(rows).length != 0) {
-        const supplierBySubCategory = yield db.query(`SELECT *
-                    FROM ${tableName} WHERE id = ?;`, [rows[0].fornecedor_id]);
-        return supplierBySubCategory[0];
-      }
-      return Object.assign(supplierResponse, subCategoryResponse);
+      const [supplierResponse] = yield db.query(
+        `
+                SELECT * FROM ${tableName} as t1, ${secondTableName} as subCategorySupplier
+                WHERE (t1.bairro LIKE ?
+                OR (t1.cidade LIKE ? 
+                OR (t1.estado LIKE ?))) AND (t1.empresa LIKE ? OR (t1.Categorias LIKE ? OR (subCategorySupplier.nome LIKE ?)));`,
+        [`%${place}%`, `%${place}%`, `%${place}%`, `%${category}%`, `%${category}%`, `%${category}%`]
+      );
+      return supplierResponse;
     }
   } catch (err) {
     console.log(err);
@@ -172,7 +144,7 @@ var getSupplierByCity = (city) => __async(void 0, null, function* () {
   try {
     const [rows] = yield db.query(`
         SELECT * FROM ${tableName}
-        WHERE cidade LIKE ?;`, [`${city}%`]);
+        WHERE cidade LIKE ?;`, [`%${city}%`]);
     return rows;
   } catch (err) {
     console.log(err);
@@ -182,7 +154,7 @@ var getSupplierByState = (state) => __async(void 0, null, function* () {
   try {
     const [rows] = yield db.query(`
         SELECT * FROM ${tableName}
-        WHERE estado LIKE ?;`, [`${state}%`]);
+        WHERE estado LIKE ?;`, [`%${state}%`]);
     return rows;
   } catch (err) {
     console.log(err);
@@ -198,7 +170,15 @@ var getSupplier = (id) => __async(void 0, null, function* () {
     console.log(err);
   }
 });
-var getAllSubCategories = (fornecedorId) => __async(void 0, null, function* () {
+var getAllSubCategories = () => __async(void 0, null, function* () {
+  try {
+    const [rows] = yield db.query(`SELECT * FROM ${secondTableName};`);
+    return rows;
+  } catch (err) {
+    console.log(err);
+  }
+});
+var getAllSubCategoriesBySupplier = (fornecedorId) => __async(void 0, null, function* () {
   try {
     const [rows] = yield db.query(`
         SELECT * FROM ${thirdTableName}
@@ -303,6 +283,7 @@ var createSupplier = (data) => __async(void 0, null, function* () {
 0 && (module.exports = {
   createSupplier,
   getAllSubCategories,
+  getAllSubCategoriesBySupplier,
   getSupplier,
   getSupplierByCity,
   getSupplierByCompanyCategorySubCategory,
