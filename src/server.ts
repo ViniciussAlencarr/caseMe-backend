@@ -47,11 +47,9 @@ route.get('/supplier-by-city/:city', async (req: Request, res: Response) => {
     res.status(200).send(supplier)
 })
 // search by neighborhood, city or state
-route.get('/supplier-by-neighborhood-city-state/:neighborhood/:city/:state', async (req: Request, res: Response) => {
-    const neighborhood = req.params.neighborhood
-    const city = req.params.city
-    const state = req.params.state
-    const supplier = await getSupplierByNeighborhoodCityState(neighborhood, city, state)
+route.get('/supplier-by-neighborhood-city-state/:conditionValue', async (req: Request, res: Response) => {
+    const conditionValue = req.params.conditionValue
+    const supplier = await getSupplierByNeighborhoodCityState(conditionValue)
     res.status(200).send(supplier)
 })
 // search by neighborhood, city or state

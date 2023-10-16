@@ -6,18 +6,29 @@ const thirdTableName = 'FornecedorSubcategoriaFornecedor'
 
 export const getSuppliers = async () => {
     try {
-        const [rows] = await db.query(`SELECT * FROM ${tableName};`)
+        const [rows] = await db.query(`SELECT DISTINCT 
+        t1.empresa,
+        t1.Categorias,
+        t1.estado,
+        t1.cidade,
+        t1.numTagsRef,
+        t3.nome FROM ${tableName} as t1 RIGHT JOIN ${thirdTableName} as t2
+        ON t1.id = t2.fornecedor_id RIGHT JOIN ${secondTableName} as t3 ON t3.id = t2.subcategoriafornecedor_id;`)
         return rows
     } catch (err) {
         console.log(err)
     }
 }
 
-export const getSupplierByNeighborhoodCityState = async (neighborhood: string, city: string, state: string) => {
+export const getSupplierByNeighborhoodCityState = async (value: string) => {
     try {
         const [rows] = await db.query(`
-        SELECT bairro, cidade, estado FROM ${tableName}
-        WHERE (bairro LIKE ? OR (cidade LIKE ? OR (estado LIKE ?)));`, [`%${neighborhood}%`, `%${city}%`, `%${state}%`])
+        SELECT DISTINCT bairro, cidade, estado,
+        CASE WHEN bairro LIKE '%${value}%' THEN
+        bairro WHEN cidade LIKE '%${value}%' THEN
+        cidade WHEN estado LIKE '%${value}%'THEN
+        estado ELSE NULL END AS result FROM ${tableName}
+        `)
         return rows
     } catch (err) {
         console.log(err)
@@ -26,12 +37,15 @@ export const getSupplierByNeighborhoodCityState = async (neighborhood: string, c
 
 export const getSupplierByCompanyCategorySubCategory = async (company: string, category: string, subCategory: string) => {
     try {
-        const [supplierResponse]: any = await db.query(`SELECT DISTINCT empresa, Categorias
-            FROM ${tableName} WHERE 
-            (empresa LIKE ? OR (Categorias LIKE ?));`, [`%${company}%`, `%${category}%`])
-        const [subCategoryResponse]: any = await db.query(`SELECT nome FROM ${secondTableName} WHERE 
-            nome LIKE ?;`, [`%${subCategory}%`])
-        return Object.assign(supplierResponse, subCategoryResponse)
+        const [suppliers] = await db.query(`SELECT t1.empresa, t1.Categorias,
+        CASE WHEN t1.empresa LIKE '%${company}%' THEN
+        t1.empresa WHEN t1.Categorias LIKE '%${company}%' THEN t1.Categorias ELSE NULL END AS result
+        FROM ${tableName} as t1;`)
+        const [subCategories] = await db.query(`SELECT nome,
+        CASE WHEN nome LIKE '%${company}%' THEN
+        nome ELSE NULL END AS result
+        FROM ${secondTableName};`)
+        return Object.assign(suppliers, subCategories)
     } catch (err) {
         console.log(err)
     }
@@ -41,8 +55,14 @@ export const searchSupplierByResults = async (place: string, category: string, c
     try {
         if (caseMeMention == 'true') {
             const [supplierResponse]: any = await db.query(`
-                SELECT * FROM ${tableName} as t1, ${secondTableName} as subCategorySupplier
-                WHERE numTagsRef > 0 AND 
+                SELECT 
+                t1.empresa,
+                t1.Categorias,
+                t1.estado,
+                t1.cidade,
+                t1.numTagsRef,
+                subCategorySupplier.nome FROM ${tableName} as t1, ${secondTableName} as subCategorySupplier
+                WHERE numTagsRef > 0 AND
                 (t1.bairro LIKE ?
                 OR (t1.cidade LIKE ? 
                 OR (t1.estado LIKE ?))) AND (t1.empresa LIKE ? OR (t1.Categorias LIKE ? OR (subCategorySupplier.nome LIKE ?)));`,
@@ -50,7 +70,13 @@ export const searchSupplierByResults = async (place: string, category: string, c
             return supplierResponse
         } else {
             const [supplierResponse]: any = await db.query(`
-                SELECT * FROM ${tableName} as t1, ${secondTableName} as subCategorySupplier
+                SELECT
+                t1.empresa,
+                t1.Categorias,
+                t1.estado,
+                t1.cidade,
+                t1.numTagsRef,
+                subCategorySupplier.nome FROM ${tableName} as t1, ${secondTableName} as subCategorySupplier
                 WHERE (t1.bairro LIKE ?
                 OR (t1.cidade LIKE ? 
                 OR (t1.estado LIKE ?))) AND (t1.empresa LIKE ? OR (t1.Categorias LIKE ? OR (subCategorySupplier.nome LIKE ?)));`,
