@@ -17,7 +17,7 @@ export const getSupplierByNeighborhoodCityState = async (neighborhood: string, c
     try {
         const [rows] = await db.query(`
         SELECT bairro, cidade, estado FROM ${tableName}
-        WHERE bairro LIKE ? OR cidade LIKE ? OR estado LIKE ?;`, [`${neighborhood}%`, `${city}%`, `${state}%`])
+        WHERE (bairro LIKE ? OR (cidade LIKE ? OR (estado LIKE ?)));`, [`%${neighborhood}%`, `%${city}%`, `%${state}%`])
         return rows
     } catch (err) {
         console.log(err)
@@ -26,22 +26,12 @@ export const getSupplierByNeighborhoodCityState = async (neighborhood: string, c
 
 export const getSupplierByCompanyCategorySubCategory = async (company: string, category: string, subCategory: string) => {
     try {
-        const [supplierResponse]: any = await db.query(`SELECT supplier.id, supplier.empresa, supplier.Categorias
-            FROM ${tableName} as supplier WHERE 
-            supplier.empresa LIKE ? OR supplier.Categorias LIKE ?;`, [`${company}%`, `${category}%`, `${subCategory}%`])
-
-        const [subCategoryResponse]: any = await db.query(`SELECT subCategorySupplier.nome, subCategorySupplier.id
-            FROM ${secondTableName} as subCategorySupplier WHERE 
-            subCategorySupplier.nome LIKE ?;`, [`${subCategory}%`])
-        const [rows]: any = await db.query(`
-            SELECT * FROM ${thirdTableName}
-            WHERE subcategoriafornecedor_id = ? OR fornecedor_id = ?;`, [subCategoryResponse[0]?.id, supplierResponse[0]?.id])
-        if (Object.keys(rows).length != 0) {
-            const supplierBySubCategory = await db.query(`SELECT *
-            FROM ${tableName} WHERE id = ?;`, [rows[0].fornecedor_id])
-            return supplierBySubCategory[0]
-        }
-        return Object.assign(supplierResponse[0], subCategoryResponse[0])
+        const [supplierResponse]: any = await db.query(`SELECT DISTINCT empresa, Categorias
+            FROM ${tableName} WHERE 
+            (empresa LIKE ? OR (Categorias LIKE ?));`, [`%${company}%`, `%${category}%`])
+        const [subCategoryResponse]: any = await db.query(`SELECT nome FROM ${secondTableName} WHERE 
+            nome LIKE ?;`, [`%${subCategory}%`])
+        return Object.assign(supplierResponse, subCategoryResponse)
     } catch (err) {
         console.log(err)
     }
@@ -50,44 +40,22 @@ export const getSupplierByCompanyCategorySubCategory = async (company: string, c
 export const searchSupplierByResults = async (place: string, category: string, caseMeMention: any) => {
     try {
         if (caseMeMention == 'true') {
-            const supplierResponse: any = await db.query(`
-                SELECT * FROM ${tableName}
-                WHERE numTagsRef > 0 AND
-                (bairro LIKE ?
-                OR cidade LIKE ? 
-                OR estado LIKE ?) AND
-                Categorias LIKE ?;`, [`${place}%`, `${place}%`, `${place}%`, `${category}%`])
-            const subCategoryResponse: any = await db.query(`SELECT subCategorySupplier.nome
-                FROM ${secondTableName} as subCategorySupplier WHERE 
-                subCategorySupplier.nome LIKE ?;`, [`${category}%`])
-            const [rows]: any = await db.query(`
-                SELECT * FROM ${thirdTableName}
-                WHERE subcategoriafornecedor_id = ? OR fornecedor_id = ?;`, [subCategoryResponse[0]?.id, supplierResponse[0]?.id])
-            if (Object.keys(rows).length != 0) {
-                const supplierBySubCategory = await db.query(`SELECT *
-                    FROM ${tableName} WHERE id = ?;`, [rows[0].fornecedor_id])
-                return supplierBySubCategory[0]
-            }
-            return Object.assign(supplierResponse[0], subCategoryResponse[0])
+            const [supplierResponse]: any = await db.query(`
+                SELECT * FROM ${tableName} as t1, ${secondTableName} as subCategorySupplier
+                WHERE numTagsRef > 0 AND 
+                (t1.bairro LIKE ?
+                OR (t1.cidade LIKE ? 
+                OR (t1.estado LIKE ?))) AND (t1.empresa LIKE ? OR (t1.Categorias LIKE ? OR (subCategorySupplier.nome LIKE ?)));`,
+            [`%${place}%`, `%${place}%`, `%${place}%`, `%${category}%`, `%${category}%`, `%${category}%`])
+            return supplierResponse
         } else {
             const [supplierResponse]: any = await db.query(`
-                SELECT * FROM ${tableName}
-                WHERE (bairro LIKE ?
-                OR cidade LIKE ? 
-                OR estado LIKE ?) AND
-                Categorias LIKE ?;`, [`${place}%`, `${place}%`, `${place}%`, `${category}%`])
-            const [subCategoryResponse]: any = await db.query(`SELECT subCategorySupplier.id, subCategorySupplier.nome
-                FROM ${secondTableName} as subCategorySupplier WHERE 
-                subCategorySupplier.nome LIKE ?;`, [`${category}%`])
-            const [rows]: any = await db.query(`
-                SELECT * FROM ${thirdTableName}
-                WHERE subcategoriafornecedor_id = ? OR fornecedor_id = ?;`, [subCategoryResponse[0]?.id, supplierResponse[0]?.id])
-            if (Object.keys(rows).length != 0) {
-                const supplierBySubCategory = await db.query(`SELECT *
-                    FROM ${tableName} WHERE id = ?;`, [rows[0].fornecedor_id])
-                return supplierBySubCategory[0]
-            }
-            return Object.assign(supplierResponse, subCategoryResponse)
+                SELECT * FROM ${tableName} as t1, ${secondTableName} as subCategorySupplier
+                WHERE (t1.bairro LIKE ?
+                OR (t1.cidade LIKE ? 
+                OR (t1.estado LIKE ?))) AND (t1.empresa LIKE ? OR (t1.Categorias LIKE ? OR (subCategorySupplier.nome LIKE ?)));`,
+            [`%${place}%`, `%${place}%`, `%${place}%`, `%${category}%`, `%${category}%`, `%${category}%`])
+            return supplierResponse
         }
 
     } catch (err) {
@@ -99,7 +67,7 @@ export const getSupplierByCity = async (city: string) => {
     try {
         const [rows] = await db.query(`
         SELECT * FROM ${tableName}
-        WHERE cidade LIKE ?;`, [`${city}%`])
+        WHERE cidade LIKE ?;`, [`%${city}%`])
         return rows
     } catch (err) {
         console.log(err)
@@ -110,7 +78,7 @@ export const getSupplierByState = async (state: string) => {
     try {
         const [rows] = await db.query(`
         SELECT * FROM ${tableName}
-        WHERE estado LIKE ?;`, [`${state}%`])
+        WHERE estado LIKE ?;`, [`%${state}%`])
         return rows
     } catch (err) {
         console.log(err)
@@ -128,8 +96,16 @@ export const getSupplier = async (id: string | number) => {
         console.log(err)
     }
 }
-
-export const getAllSubCategories = async (fornecedorId: string) => {
+export const getAllSubCategories = async () => {
+    try {
+        const [rows] = await db.query(`SELECT * FROM ${secondTableName};`)
+        return rows
+    }
+    catch (err) {
+        console.log(err)
+    }
+}
+export const getAllSubCategoriesBySupplier = async (fornecedorId: string) => {
     try {
         const [rows]: any = await db.query(`
         SELECT * FROM ${thirdTableName}

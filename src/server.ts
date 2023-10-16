@@ -16,7 +16,8 @@ import {
     getSupplierByNeighborhoodCityState,
     getSupplierByCompanyCategorySubCategory,
     searchSupplierByResults,
-    getAllSubCategories
+    getAllSubCategories,
+    getAllSubCategoriesBySupplier
 } from './database/tables/supplier'
 
 
@@ -76,9 +77,15 @@ route.get('/supplier-by-state/:state', async (req: Request, res: Response) => {
     res.status(200).send(supplier)
 })
 // get all subcategories
+route.get('/sub-categories', async (req: Request, res: Response) => {
+    const subCategories = await getAllSubCategories()
+    res.status(200).send(subCategories)
+})
+
+// get all subcategories by supplier
 route.get('/supplier/get-all-subcategories/:id', async (req: Request, res: Response) => {
     const id = req.params.id
-    const supplier = await getAllSubCategories(id)
+    const supplier = await getAllSubCategoriesBySupplier(id)
     res.status(200).send(supplier)
 })
 // create
