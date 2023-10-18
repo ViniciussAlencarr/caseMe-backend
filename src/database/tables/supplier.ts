@@ -1,19 +1,18 @@
 import { db } from '../service'
 
-const tableName = 'Fornecedor'
-const secondTableName = 'SubcategoriaFornecedor'
-const thirdTableName = 'FornecedorSubcategoriaFornecedor'
+import { tableNames } from './tableNames'
 
 export const getSuppliers = async () => {
     try {
         const [rows] = await db.query(`SELECT DISTINCT 
+        t1.id,
         t1.empresa,
         t1.Categorias,
         t1.estado,
         t1.cidade,
         t1.numTagsRef,
-        t3.nome FROM ${tableName} as t1 RIGHT JOIN ${thirdTableName} as t2
-        ON t1.id = t2.fornecedor_id RIGHT JOIN ${secondTableName} as t3 ON t3.id = t2.subcategoriafornecedor_id;`)
+        t3.nome FROM ${tableNames.supplier} as t1 RIGHT JOIN ${tableNames.supplierSubCategory} as t2
+        ON t1.id = t2.fornecedor_id RIGHT JOIN ${tableNames.subCategories} as t3 ON t3.id = t2.subcategoriafornecedor_id;`)
         return rows
     } catch (err) {
         console.log(err)
@@ -27,7 +26,7 @@ export const getSupplierByNeighborhoodCityState = async (value: string) => {
         CASE WHEN bairro LIKE '%${value}%' THEN
         bairro WHEN cidade LIKE '%${value}%' THEN
         cidade WHEN estado LIKE '%${value}%'THEN
-        estado ELSE NULL END AS result FROM ${tableName}
+        estado ELSE NULL END AS result FROM ${tableNames.supplier}
         `)
         return rows
     } catch (err) {
@@ -40,11 +39,11 @@ export const getSupplierByCompanyCategorySubCategory = async (company: string, c
         const [suppliers] = await db.query(`SELECT t1.empresa, t1.Categorias,
         CASE WHEN t1.empresa LIKE '%${company}%' THEN
         t1.empresa WHEN t1.Categorias LIKE '%${company}%' THEN t1.Categorias ELSE NULL END AS result
-        FROM ${tableName} as t1;`)
+        FROM ${tableNames.supplier} as t1;`)
         const [subCategories] = await db.query(`SELECT nome,
         CASE WHEN nome LIKE '%${company}%' THEN
         nome ELSE NULL END AS result
-        FROM ${secondTableName};`)
+        FROM ${tableNames.subCategories};`)
         return Object.assign(suppliers, subCategories)
     } catch (err) {
         console.log(err)
@@ -61,7 +60,7 @@ export const searchSupplierByResults = async (place: string, category: string, c
                 t1.estado,
                 t1.cidade,
                 t1.numTagsRef,
-                subCategorySupplier.nome FROM ${tableName} as t1, ${secondTableName} as subCategorySupplier
+                subCategorySupplier.nome FROM ${tableNames.supplier} as t1, ${tableNames.subCategories} as subCategorySupplier
                 WHERE numTagsRef > 0 AND
                 (t1.bairro LIKE ?
                 OR (t1.cidade LIKE ? 
@@ -76,7 +75,7 @@ export const searchSupplierByResults = async (place: string, category: string, c
                 t1.estado,
                 t1.cidade,
                 t1.numTagsRef,
-                subCategorySupplier.nome FROM ${tableName} as t1, ${secondTableName} as subCategorySupplier
+                subCategorySupplier.nome FROM ${tableNames.supplier} as t1, ${tableNames.subCategories} as subCategorySupplier
                 WHERE (t1.bairro LIKE ?
                 OR (t1.cidade LIKE ? 
                 OR (t1.estado LIKE ?))) AND (t1.empresa LIKE ? OR (t1.Categorias LIKE ? OR (subCategorySupplier.nome LIKE ?)));`,
@@ -92,7 +91,7 @@ export const searchSupplierByResults = async (place: string, category: string, c
 export const getSupplierByCity = async (city: string) => {
     try {
         const [rows] = await db.query(`
-        SELECT * FROM ${tableName}
+        SELECT * FROM ${tableNames.supplier}
         WHERE cidade LIKE ?;`, [`%${city}%`])
         return rows
     } catch (err) {
@@ -103,7 +102,7 @@ export const getSupplierByCity = async (city: string) => {
 export const getSupplierByState = async (state: string) => {
     try {
         const [rows] = await db.query(`
-        SELECT * FROM ${tableName}
+        SELECT * FROM ${tableNames.supplier}
         WHERE estado LIKE ?;`, [`%${state}%`])
         return rows
     } catch (err) {
@@ -114,7 +113,7 @@ export const getSupplierByState = async (state: string) => {
 export const getSupplier = async (id: string | number) => {
     try {
         const [rows] = await db.query(`
-        SELECT * FROM ${tableName}
+        SELECT * FROM ${tableNames.supplier}
         WHERE id = ?;`, [id])
         return rows
     }
@@ -124,7 +123,7 @@ export const getSupplier = async (id: string | number) => {
 }
 export const getAllSubCategories = async () => {
     try {
-        const [rows] = await db.query(`SELECT * FROM ${secondTableName};`)
+        const [rows] = await db.query(`SELECT * FROM ${tableNames.subCategories};`)
         return rows
     }
     catch (err) {
@@ -134,11 +133,11 @@ export const getAllSubCategories = async () => {
 export const getAllSubCategoriesBySupplier = async (fornecedorId: string) => {
     try {
         const [rows]: any = await db.query(`
-        SELECT * FROM ${thirdTableName}
+        SELECT * FROM ${tableNames.supplierSubCategory}
         WHERE fornecedor_id = ?;`, [fornecedorId])
         if (Object.keys(rows).length != 0) {
             const response = await db.query(`
-            SELECT * FROM ${secondTableName}
+            SELECT * FROM ${tableNames.subCategories}
             WHERE id = ?;`, [rows[0].subcategoriafornecedor_id])
             return response[0]
         } 
@@ -152,7 +151,7 @@ export const getAllSubCategoriesBySupplier = async (fornecedorId: string) => {
 export const createSupplier = async (data: any) => {
     try {
         const [result]: any = await db.query(`
-        INSERT INTO ${tableName} (
+        INSERT INTO ${tableNames.supplier} (
             empresa,
             website,
             contatoTelefone,
