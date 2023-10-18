@@ -78,20 +78,26 @@ var config_default = {
 // src/database/service.ts
 var db = import_mysql2.default.createConnection(config_default).promise();
 
+// src/database/tables/tableNames.ts
+var tableNames = {
+  supplier: "Fornecedor",
+  subCategories: "SubcategoriaFornecedor",
+  supplierSubCategory: "FornecedorSubcategoriaFornecedor",
+  assessment: "Avaliacoes"
+};
+
 // src/database/tables/supplier.ts
-var tableName = "Fornecedor";
-var secondTableName = "SubcategoriaFornecedor";
-var thirdTableName = "FornecedorSubcategoriaFornecedor";
 var getSuppliers = () => __async(void 0, null, function* () {
   try {
     const [rows] = yield db.query(`SELECT DISTINCT 
+        t1.id,
         t1.empresa,
         t1.Categorias,
         t1.estado,
         t1.cidade,
         t1.numTagsRef,
-        t3.nome FROM ${tableName} as t1 RIGHT JOIN ${thirdTableName} as t2
-        ON t1.id = t2.fornecedor_id RIGHT JOIN ${secondTableName} as t3 ON t3.id = t2.subcategoriafornecedor_id;`);
+        t3.nome FROM ${tableNames.supplier} as t1 RIGHT JOIN ${tableNames.supplierSubCategory} as t2
+        ON t1.id = t2.fornecedor_id RIGHT JOIN ${tableNames.subCategories} as t3 ON t3.id = t2.subcategoriafornecedor_id;`);
     return rows;
   } catch (err) {
     console.log(err);
@@ -104,7 +110,7 @@ var getSupplierByNeighborhoodCityState = (value) => __async(void 0, null, functi
         CASE WHEN bairro LIKE '%${value}%' THEN
         bairro WHEN cidade LIKE '%${value}%' THEN
         cidade WHEN estado LIKE '%${value}%'THEN
-        estado ELSE NULL END AS result FROM ${tableName}
+        estado ELSE NULL END AS result FROM ${tableNames.supplier}
         `);
     return rows;
   } catch (err) {
@@ -116,11 +122,11 @@ var getSupplierByCompanyCategorySubCategory = (company, category, subCategory) =
     const [suppliers] = yield db.query(`SELECT t1.empresa, t1.Categorias,
         CASE WHEN t1.empresa LIKE '%${company}%' THEN
         t1.empresa WHEN t1.Categorias LIKE '%${company}%' THEN t1.Categorias ELSE NULL END AS result
-        FROM ${tableName} as t1;`);
+        FROM ${tableNames.supplier} as t1;`);
     const [subCategories] = yield db.query(`SELECT nome,
         CASE WHEN nome LIKE '%${company}%' THEN
         nome ELSE NULL END AS result
-        FROM ${secondTableName};`);
+        FROM ${tableNames.subCategories};`);
     return Object.assign(suppliers, subCategories);
   } catch (err) {
     console.log(err);
@@ -137,7 +143,7 @@ var searchSupplierByResults = (place, category, caseMeMention) => __async(void 0
                 t1.estado,
                 t1.cidade,
                 t1.numTagsRef,
-                subCategorySupplier.nome FROM ${tableName} as t1, ${secondTableName} as subCategorySupplier
+                subCategorySupplier.nome FROM ${tableNames.supplier} as t1, ${tableNames.subCategories} as subCategorySupplier
                 WHERE numTagsRef > 0 AND
                 (t1.bairro LIKE ?
                 OR (t1.cidade LIKE ? 
@@ -154,7 +160,7 @@ var searchSupplierByResults = (place, category, caseMeMention) => __async(void 0
                 t1.estado,
                 t1.cidade,
                 t1.numTagsRef,
-                subCategorySupplier.nome FROM ${tableName} as t1, ${secondTableName} as subCategorySupplier
+                subCategorySupplier.nome FROM ${tableNames.supplier} as t1, ${tableNames.subCategories} as subCategorySupplier
                 WHERE (t1.bairro LIKE ?
                 OR (t1.cidade LIKE ? 
                 OR (t1.estado LIKE ?))) AND (t1.empresa LIKE ? OR (t1.Categorias LIKE ? OR (subCategorySupplier.nome LIKE ?)));`,
@@ -169,7 +175,7 @@ var searchSupplierByResults = (place, category, caseMeMention) => __async(void 0
 var getSupplierByCity = (city) => __async(void 0, null, function* () {
   try {
     const [rows] = yield db.query(`
-        SELECT * FROM ${tableName}
+        SELECT * FROM ${tableNames.supplier}
         WHERE cidade LIKE ?;`, [`%${city}%`]);
     return rows;
   } catch (err) {
@@ -179,7 +185,7 @@ var getSupplierByCity = (city) => __async(void 0, null, function* () {
 var getSupplierByState = (state) => __async(void 0, null, function* () {
   try {
     const [rows] = yield db.query(`
-        SELECT * FROM ${tableName}
+        SELECT * FROM ${tableNames.supplier}
         WHERE estado LIKE ?;`, [`%${state}%`]);
     return rows;
   } catch (err) {
@@ -189,7 +195,7 @@ var getSupplierByState = (state) => __async(void 0, null, function* () {
 var getSupplier = (id) => __async(void 0, null, function* () {
   try {
     const [rows] = yield db.query(`
-        SELECT * FROM ${tableName}
+        SELECT * FROM ${tableNames.supplier}
         WHERE id = ?;`, [id]);
     return rows;
   } catch (err) {
@@ -198,7 +204,7 @@ var getSupplier = (id) => __async(void 0, null, function* () {
 });
 var getAllSubCategories = () => __async(void 0, null, function* () {
   try {
-    const [rows] = yield db.query(`SELECT * FROM ${secondTableName};`);
+    const [rows] = yield db.query(`SELECT * FROM ${tableNames.subCategories};`);
     return rows;
   } catch (err) {
     console.log(err);
@@ -207,11 +213,11 @@ var getAllSubCategories = () => __async(void 0, null, function* () {
 var getAllSubCategoriesBySupplier = (fornecedorId) => __async(void 0, null, function* () {
   try {
     const [rows] = yield db.query(`
-        SELECT * FROM ${thirdTableName}
+        SELECT * FROM ${tableNames.supplierSubCategory}
         WHERE fornecedor_id = ?;`, [fornecedorId]);
     if (Object.keys(rows).length != 0) {
       const response = yield db.query(`
-            SELECT * FROM ${secondTableName}
+            SELECT * FROM ${tableNames.subCategories}
             WHERE id = ?;`, [rows[0].subcategoriafornecedor_id]);
       return response[0];
     }
@@ -223,7 +229,7 @@ var getAllSubCategoriesBySupplier = (fornecedorId) => __async(void 0, null, func
 var createSupplier = (data) => __async(void 0, null, function* () {
   try {
     const [result] = yield db.query(`
-        INSERT INTO ${tableName} (
+        INSERT INTO ${tableNames.supplier} (
             empresa,
             website,
             contatoTelefone,
