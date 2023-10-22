@@ -2,22 +2,122 @@ import { db } from '../service'
 
 import { tableNames } from './tableNames'
 
-export const getSuppliers = async () => {
+export const getSuppliers = async (queryParams: any) => {
     try {
-        const [rows] = await db.query(`SELECT DISTINCT 
-        t1.id,
-        t1.empresa,
-        t1.Categorias,
-        t1.estado,
-        t1.cidade,
-        t1.numTagsRef,
-        t3.nome FROM ${tableNames.supplier} as t1 RIGHT JOIN ${tableNames.supplierSubCategory} as t2
-        ON t1.id = t2.fornecedor_id RIGHT JOIN ${tableNames.subCategories} as t3 ON t3.id = t2.subcategoriafornecedor_id;`)
+        const [rows] = await db.query(`
+        SELECT
+            t1.id,
+            t1.empresa,
+            t1.estado,
+            t1.cidade,
+            t1.numTagsRef,
+            t4.nome,
+            COUNT(t2.id) as totalAvaliacoes,
+            ROUND(AVG(t2.avaliacao)) as mediaAvaliacao
+        FROM
+            ${tableNames.supplier} as t1
+        LEFT JOIN
+            ${tableNames.assessment} as t2
+        ON 
+            t1.id = t2.fornecedorId
+        LEFT JOIN
+            ${tableNames.supplierSubCategory} as t3
+        ON
+            t1.id = t3.fornecedor_id
+        INNER JOIN
+            ${tableNames.subCategories} as t4
+        ON
+            t4.id = t3.subcategoriafornecedor_id
+        group by
+            t1.id, t4.nome
+        ORDER BY id LIMIT ? OFFSET ?
+        `,
+        [parseInt(queryParams.perPage), parseInt(queryParams.page)])
         return rows
     } catch (err) {
         console.log(err)
     }
 }
+
+const getAllMention = async () => {
+    try {
+        const [rows] = await db.query(`
+        SELECT 
+            t1.id as fornecedor_id, count(*) as mentions
+        FROM
+            ${tableNames.supplier} as t1
+        INNER JOIN
+            wp_terms as t2
+        ON
+            t1.slug = t2.slug
+        INNER JOIN
+            wp_term_taxonomy as t3
+        ON
+            t2.term_id = t3.term_taxonomy_id
+        INNER JOIN
+            wp_term_relationships as t4
+        ON
+            t3.term_taxonomy_id = t4.term_taxonomy_id
+        INNER JOIN
+            wp_posts as t5
+        ON
+            t4.object_id = t5.id
+        AND
+            t5.post_status = 'publish' group by t1.id
+        `)
+        return rows;
+    } catch (err) {
+        throw err
+    }
+}
+
+const getInsprations = async () => {
+    try {
+        const [rows] = await db.query(`
+        SELECT
+            t2.id as fornecedor_id, count(*) as inspirations
+        FROM
+            ${tableNames.inspirations} as t1
+        INNER JOIN
+            ${tableNames.supplier} as t2
+        ON
+            t1.tags
+        LIKE
+            CONCAT('%', t2.slug, '%') group by t2.id`)
+        return rows
+    } catch (err) {
+        throw err
+    }
+}
+
+export const getAverageOfAssessments = async () => {
+    try {
+        
+        /* const [rows] = await db.query(`INSERT INTO ${tableNames.assessment} (fornecedorId, nomeAvaliador, avaliacao)
+        SELECT id, empresa, floor(rand()*5)+1
+        FROM ${tableNames.supplier}
+        `) */
+        return []
+    } catch (err) {
+        console.log(err)
+    }
+}
+
+/* TODO: finalizar */
+export const teste = async () => {
+    try {
+        /* const mentions = await getAllMention() */
+        const inspirations = await getInsprations()
+        /* const [rows] = await db.query(`SELECT
+        (SELECT COUNT(*) FROM ${tableNames.supplier} WHERE id < 5) +
+        (SELECT COUNT(*) FROM ${tableNames.inspirations} as t1 INNER JOIN ${tableNames.supplier} as t2 WHERE t.id < 5)
+        AS SumCount`) */
+        return inspirations
+    } catch (err) {
+        console.log(err)
+    }
+}
+
 
 export const getSupplierByNeighborhoodCityState = async (value: string) => {
     try {
@@ -50,36 +150,86 @@ export const getSupplierByCompanyCategorySubCategory = async (company: string, c
     }
 }
 
-export const searchSupplierByResults = async (place: string, category: string, caseMeMention: any) => {
+export const searchSupplierByResults = async (place: string, caseMeMention: any) => {
     try {
         if (caseMeMention == 'true') {
-            const [supplierResponse]: any = await db.query(`
-                SELECT 
-                t1.empresa,
-                t1.Categorias,
-                t1.estado,
-                t1.cidade,
-                t1.numTagsRef,
-                subCategorySupplier.nome FROM ${tableNames.supplier} as t1, ${tableNames.subCategories} as subCategorySupplier
-                WHERE numTagsRef > 0 AND
-                (t1.bairro LIKE ?
-                OR (t1.cidade LIKE ? 
-                OR (t1.estado LIKE ?))) AND (t1.empresa LIKE ? OR (t1.Categorias LIKE ? OR (subCategorySupplier.nome LIKE ?)));`,
-            [`%${place}%`, `%${place}%`, `%${place}%`, `%${category}%`, `%${category}%`, `%${category}%`])
+            const [supplierResponse] = await db.query(`
+                SELECT
+                    t1.id,
+                    t1.empresa,
+                    t1.estado,
+                    t1.cidade,
+                    t1.numTagsRef,
+                    t4.nome,
+                    COUNT(t2.id) as totalAvaliacoes,
+                    ROUND(AVG(t2.avaliacao)) as mediaAvaliacao
+                FROM
+                    ${tableNames.supplier} as t1
+                
+                LEFT JOIN
+                    ${tableNames.assessment} as t2
+                ON 
+                    t1.id = t2.fornecedorId
+                LEFT JOIN
+                    ${tableNames.supplierSubCategory} as t3
+                ON
+                    t1.id = t3.fornecedor_id
+                INNER JOIN
+                    ${tableNames.subCategories} as t4
+                ON
+                    t4.id = t3.subcategoriafornecedor_id
+                WHERE
+                    t1.numTagsRef > 0
+                AND
+                    (t1.bairro REGEXP ?
+                OR
+                    (t1.cidade REGEXP ?
+                OR
+                    (t1.estado REGEXP ?)))
+                AND 
+                    ((t1.empresa REGEXP ?) OR (t1.Categorias REGEXP ?) OR (t4.nome REGEXP ?))
+                group by
+                    t1.id, t4.nome;`,
+            [place, place, place, place, place, place])
             return supplierResponse
         } else {
-            const [supplierResponse]: any = await db.query(`
+            const [supplierResponse] = await db.query(`
                 SELECT
-                t1.empresa,
-                t1.Categorias,
-                t1.estado,
-                t1.cidade,
-                t1.numTagsRef,
-                subCategorySupplier.nome FROM ${tableNames.supplier} as t1, ${tableNames.subCategories} as subCategorySupplier
-                WHERE (t1.bairro LIKE ?
-                OR (t1.cidade LIKE ? 
-                OR (t1.estado LIKE ?))) AND (t1.empresa LIKE ? OR (t1.Categorias LIKE ? OR (subCategorySupplier.nome LIKE ?)));`,
-            [`%${place}%`, `%${place}%`, `%${place}%`, `%${category}%`, `%${category}%`, `%${category}%`])
+                    t1.id,
+                    t1.empresa,
+                    t1.estado,
+                    t1.cidade,
+                    t1.numTagsRef,
+                    t4.nome,
+                    COUNT(t2.id) as totalAvaliacoes,
+                    ROUND(AVG(t2.avaliacao)) as mediaAvaliacao
+                FROM
+                    ${tableNames.supplier} as t1
+                
+                LEFT JOIN
+                    ${tableNames.assessment} as t2
+                ON 
+                    t1.id = t2.fornecedorId
+                LEFT JOIN
+                    ${tableNames.supplierSubCategory} as t3
+                ON
+                    t1.id = t3.fornecedor_id
+                INNER JOIN
+                    ${tableNames.subCategories} as t4
+                ON
+                    t4.id = t3.subcategoriafornecedor_id
+                WHERE
+                    (t1.bairro REGEXP ?
+                OR
+                    (t1.cidade REGEXP ?
+                OR
+                    (t1.estado REGEXP ?)))
+                AND 
+                    ((t1.empresa REGEXP ?) OR (t1.Categorias REGEXP ?) OR (t4.nome REGEXP ?))
+                group by
+                    t1.id, t4.nome
+                `,
+            [place, place, place, place, place, place])
             return supplierResponse
         }
 
@@ -116,32 +266,6 @@ export const getSupplier = async (id: string | number) => {
         SELECT * FROM ${tableNames.supplier}
         WHERE id = ?;`, [id])
         return rows
-    }
-    catch (err) {
-        console.log(err)
-    }
-}
-export const getAllSubCategories = async () => {
-    try {
-        const [rows] = await db.query(`SELECT * FROM ${tableNames.subCategories};`)
-        return rows
-    }
-    catch (err) {
-        console.log(err)
-    }
-}
-export const getAllSubCategoriesBySupplier = async (fornecedorId: string) => {
-    try {
-        const [rows]: any = await db.query(`
-        SELECT * FROM ${tableNames.supplierSubCategory}
-        WHERE fornecedor_id = ?;`, [fornecedorId])
-        if (Object.keys(rows).length != 0) {
-            const response = await db.query(`
-            SELECT * FROM ${tableNames.subCategories}
-            WHERE id = ?;`, [rows[0].subcategoriafornecedor_id])
-            return response[0]
-        } 
-        return []
     }
     catch (err) {
         console.log(err)

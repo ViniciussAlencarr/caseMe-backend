@@ -18,9 +18,15 @@ import {
     getSupplierByNeighborhoodCityState,
     getSupplierByCompanyCategorySubCategory,
     searchSupplierByResults,
-    getAllSubCategories,
-    getAllSubCategoriesBySupplier
+    teste,
+    getAverageOfAssessments
 } from './database/tables/supplier'
+
+import {
+    getAllSubCategories,
+    getAllSubCategoriesBySupplier,
+    createSubCategory
+} from './database/tables/supplierSubCategory'
 
 import {
     getAllAssessments,
@@ -39,7 +45,11 @@ app.use(cors())
 // Fornecedor
 // get all
 route.get('/suppliers', async (req: Request, res: Response) => {
-    const suppliers = await getSuppliers()
+    let params = Object.keys(req.query).length != 0 ? req.query : {
+        page: '0',
+        perPage: '15'
+    }
+    const suppliers = await getSuppliers(params)
     return res.status(200).send(suppliers)
 })
 // get one
@@ -69,12 +79,11 @@ route.get('/supplier-by-company-category-sub_category/:company/:category/:sub_ca
     return res.status(200).send(supplier)
 })
 // search results
-route.get('/search-results/:place/:category', async (req: Request, res: Response) => {
+route.get('/search-results/:researches', async (req: Request, res: Response) => {
     const caseMeMention = req.query.caseMeMention
-    const place = req.params.place
-    const category = req.params.category
-    const supplier = await searchSupplierByResults(place, category, caseMeMention)
-    return res.status(200).send(supplier)
+    const researches = req.params.researches
+    const suppliers = await searchSupplierByResults(researches, caseMeMention)
+    return res.status(200).send(suppliers)
 })
 // search by state
 route.get('/supplier-by-state/:state', async (req: Request, res: Response) => {
@@ -94,6 +103,17 @@ route.get('/supplier/get-all-subcategories/:id', async (req: Request, res: Respo
     const supplier = await getAllSubCategoriesBySupplier(id)
     return res.status(200).send(supplier)
 })
+route.post('/sub-category/new', async (req: Request, res: Response) => {
+    const data = req.body
+    const params = {
+        ...data,
+        criado: formatDate(date),
+        modificado: formatDate(date),
+    }
+    const subCategory = await createSubCategory(params)
+    return res.status(200).send(subCategory)
+})
+
 // create
 route.post('/supplier/create', async (req: Request, res: Response) => {
     const data = req.body
@@ -105,9 +125,17 @@ route.post('/supplier/create', async (req: Request, res: Response) => {
     const supplier = await createSupplier(params)
     return res.status(201).send(supplier)
 })
+route.get('/teste', async (req: Request, res: Response) => {
+    const suppliers = await teste()
+    return res.status(200).send(suppliers)
+})
 // assessments
 route.get('/assessments', async (req: Request, res: Response) => {
     const assessments = await getAllAssessments()
+    return res.status(200).send(assessments)
+})
+route.get('/assessment-average', async (req: Request, res: Response) => {
+    const assessments = await getAverageOfAssessments()
     return res.status(200).send(assessments)
 })
 route.post('/assessment/create', async (req: Request, res: Response) => {
@@ -134,20 +162,35 @@ route.post('/encode-assessment-url', async (req: Request, res: Response) => {
     try {
         const { url } = req.body
         const [baseUrl, decodeRoutes] = url.split('avaliacao')
-        const ciphertext = CryptoJS.AES.encrypt(decodeRoutes, 'secret key 123').toString();
+        const ciphertext = CryptoJS.AES.encrypt(decodeRoutes.substring(1), 'secret key 123').toString();
         return res.status(201).send({
-            url: `${baseUrl}avaliacao${ciphertext}`
+            url: `${baseUrl}avaliacao?${ciphertext}`
         })
     } catch (err: any) {
-        return res.status(502).send({ message: err.message })
+        return res.status(400).send({ message: err.message })
     }
 })
 
 // decode assessment
 route.post('/decode-assessment-url', async (req: Request, res: Response) => {
     try {
-        const { url } = req.body
-        const [baseUrl, encodeRoutes] = url.split('avaliacao')
+        const { queryParams } = req.body
+        const bytes  = CryptoJS.AES.decrypt(queryParams, 'secret key 123');
+        const originalText = bytes.toString(CryptoJS.enc.Utf8);
+        const [id, name] = originalText.split('&')
+        const supplierId = id.split('=')[1]
+        const supplierName = name.split('=')[1]
+        const assessment = await createAssessment({
+            fornecedorId: supplierId,
+            avaliacao: null,
+            nomeAvaliador: supplierName,
+            dataAvaliacao: formatDate(date),
+            texto: null,
+            visivel: true
+        })
+        return res.status(201).send(assessment)
+
+        /* const [baseUrl, encodeRoutes] = url.split('avaliacao')
         const bytes  = CryptoJS.AES.decrypt(encodeRoutes, 'secret key 123');
         const originalText = bytes.toString(CryptoJS.enc.Utf8);
         const supplierId = originalText.split('/')[1]
@@ -160,9 +203,9 @@ route.post('/decode-assessment-url', async (req: Request, res: Response) => {
             texto: null,
             visivel: true
         })
-        return res.status(201).send(assessment)
+        return res.status(201).send({}) */
     } catch (err: any) {
-        return res.status(502).send({ message: err.message })
+        return res.status(400).send({ message: err.message })
     }
 })
 

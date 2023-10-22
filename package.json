@@ -9,7 +9,7 @@
   "license": "MIT",
   "scripts": {
     "start": "node dist/server.js",
-    "start_prod": "ts-node-dev --inspect --transpile-only --ignore-watch node_modules src/server.ts",
+    "dev": "ts-node-dev --inspect --transpile-only --ignore-watch node_modules src/server.ts",
     "build": "tsup src"
   },
   "dependencies": {

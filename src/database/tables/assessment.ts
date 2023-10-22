@@ -15,26 +15,28 @@ export const getAssessmentById = async (id: string | number) => {
 
 export const createAssessment = async (data: any) => {
     try {
-        const [suppliers]: any = await db.query(`SELECT id FROM ${tableNames.supplier} WHERE id = ?;`, [data.id])
-        if (suppliers.length == 0) throw new Error(`O Fornecedor não existe para o id '${data.id}'`)
+        const [suppliers]: any = await db.query(`SELECT id FROM ${tableNames.supplier} WHERE id = ?;`, [data.fornecedorId])
+        if (suppliers.length == 0) throw new Error(`O Fornecedor não existe para o id '${data.fornecedorId}'`)
         await db.query(`
         INSERT INTO ${tableNames.assessment} (
-            id,
+            fornecedorId,
             avaliacao,
             nomeAvaliador,
             dataAvaliacao,
             texto,
             visivel)
-        VALUES (?,?,?,?,?,?)
+        SELECT * FROM (SELECT ?,?,?,?,?,?) AS tmp
+        WHERE NOT EXISTS (
+            SELECT fornecedorId, nomeAvaliador FROM ${tableNames.assessment} WHERE fornecedorId = ${data.fornecedorId} AND nomeAvaliador = ${data.nomeAvaliador})
         `, [
-            data.id,
+            data.fornecedorId,
             data.avaliacao,
             data.nomeAvaliador,
             data.dataAvaliacao,
             data.texto,
             data.visivel,
         ])
-        return getAssessmentById(data.id)
+        return data
     } catch (err) {
         console.log(err)
         throw err
