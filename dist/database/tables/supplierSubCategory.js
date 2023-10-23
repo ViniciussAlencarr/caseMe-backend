@@ -1,35 +1,91 @@
 "use strict";
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
 };
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createSubCategory = exports.getAllSubCategoriesBySupplier = exports.getSubCategoryById = exports.getAllSubCategories = void 0;
+const service_1 = require("../service");
+const tableNames_1 = require("./tableNames");
+const getAllSubCategories = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [rows] = yield service_1.db.query(`SELECT * FROM ${tableNames_1.tableNames.subCategories};`);
+        return rows;
+    }
+    catch (err) {
+        console.log(err);
+    }
+});
+exports.getAllSubCategories = getAllSubCategories;
+const getSubCategoryById = (id) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [rows] = yield service_1.db.query(`
+        SELECT * FROM ${tableNames_1.tableNames.subCategories}
+        WHERE id = ?;`, [id]);
+        return rows;
+    }
+    catch (err) {
+        console.log(err);
+    }
+});
+exports.getSubCategoryById = getSubCategoryById;
+const getAllSubCategoriesBySupplier = (fornecedorId) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [rows] = yield service_1.db.query(`
+            SELECT t2.* FROM 
+                ${tableNames_1.tableNames.supplierSubCategory} as t1
+            
+            RIGHT JOIN
+                ${tableNames_1.tableNames.subCategories} as t2
+            ON t2.id = t1.subcategoriafornecedor_id  WHERE t1.fornecedor_id = ?
 
-// src/database/tables/supplierSubCategory.ts
-var supplierSubCategory_exports = {};
-__export(supplierSubCategory_exports, {
-  getSubCategories: () => getSubCategories
+        `, [fornecedorId]);
+        return rows;
+        /* const [rows]: any = await db.query(`
+        SELECT * FROM ${tableNames.supplierSubCategory}
+        WHERE fornecedor_id = ?;`, [fornecedorId])
+        if (Object.keys(rows).length != 0) {
+            const response = await db.query(`
+            SELECT * FROM ${tableNames.subCategories}
+            WHERE id = ?;`, [rows[0].subcategoriafornecedor_id])
+            return response[0]
+        }
+        return [] */
+    }
+    catch (err) {
+        console.log(err);
+    }
 });
-module.exports = __toCommonJS(supplierSubCategory_exports);
-var getSubCategories = () => {
-  try {
-  } catch (err) {
-    console.log(err);
-  }
-};
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
-  getSubCategories
+exports.getAllSubCategoriesBySupplier = getAllSubCategoriesBySupplier;
+const createSubCategory = (data) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [result] = yield service_1.db.query(`
+        INSERT INTO ${tableNames_1.tableNames.subCategories} (
+            categoria_id,
+            nome,
+            criado,
+            modificado,
+            visivel,
+            slug
+        ) VALUES (?,?,?,?,?,?)
+        `, [
+            data.categoria_id,
+            data.nome,
+            data.criado,
+            data.modificado,
+            data.visivel,
+            data.slug,
+        ]);
+        let id = result.insertId;
+        return (0, exports.getSubCategoryById)(id);
+    }
+    catch (err) {
+        console.log(err);
+    }
 });
+exports.createSubCategory = createSubCategory;

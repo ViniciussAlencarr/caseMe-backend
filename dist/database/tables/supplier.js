@@ -1,235 +1,294 @@
 "use strict";
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
 };
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-var __async = (__this, __arguments, generator) => {
-  return new Promise((resolve, reject) => {
-    var fulfilled = (value) => {
-      try {
-        step(generator.next(value));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    var rejected = (value) => {
-      try {
-        step(generator.throw(value));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
-    step((generator = generator.apply(__this, __arguments)).next());
-  });
-};
-
-// src/database/tables/supplier.ts
-var supplier_exports = {};
-__export(supplier_exports, {
-  createSupplier: () => createSupplier,
-  getAllSubCategories: () => getAllSubCategories,
-  getAllSubCategoriesBySupplier: () => getAllSubCategoriesBySupplier,
-  getSupplier: () => getSupplier,
-  getSupplierByCity: () => getSupplierByCity,
-  getSupplierByCompanyCategorySubCategory: () => getSupplierByCompanyCategorySubCategory,
-  getSupplierByNeighborhoodCityState: () => getSupplierByNeighborhoodCityState,
-  getSupplierByState: () => getSupplierByState,
-  getSuppliers: () => getSuppliers,
-  searchSupplierByResults: () => searchSupplierByResults
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createSupplier = exports.getSupplier = exports.getSupplierByState = exports.getSupplierByCity = exports.searchSupplierByResults = exports.getSupplierByCompanyCategorySubCategory = exports.getSupplierByNeighborhoodCityState = exports.teste = exports.getAverageOfAssessments = exports.getSuppliers = void 0;
+const service_1 = require("../service");
+const tableNames_1 = require("./tableNames");
+const getSuppliers = (queryParams) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [rows] = yield service_1.db.query(`
+        SELECT
+            t1.id,
+            t1.empresa,
+            t1.estado,
+            t1.cidade,
+            t1.numTagsRef,
+            t4.nome,
+            COUNT(t2.id) as totalAvaliacoes,
+            ROUND(AVG(t2.avaliacao)) as mediaAvaliacao
+        FROM
+            ${tableNames_1.tableNames.supplier} as t1
+        LEFT JOIN
+            ${tableNames_1.tableNames.assessment} as t2
+        ON 
+            t1.id = t2.fornecedorId
+        LEFT JOIN
+            ${tableNames_1.tableNames.supplierSubCategory} as t3
+        ON
+            t1.id = t3.fornecedor_id
+        INNER JOIN
+            ${tableNames_1.tableNames.subCategories} as t4
+        ON
+            t4.id = t3.subcategoriafornecedor_id
+        group by
+            t1.id, t4.nome
+        ORDER BY id LIMIT ? OFFSET ?
+        `, [parseInt(queryParams.perPage), parseInt(queryParams.page)]);
+        return rows;
+    }
+    catch (err) {
+        console.log(err);
+    }
 });
-module.exports = __toCommonJS(supplier_exports);
-
-// src/database/service.ts
-var import_mysql2 = __toESM(require("mysql2"));
-
-// src/database/config.ts
-require("dotenv").config();
-var config_default = {
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME
-};
-
-// src/database/service.ts
-var db = import_mysql2.default.createConnection(config_default).promise();
-
-// src/database/tables/tableNames.ts
-var tableNames = {
-  supplier: "Fornecedor",
-  subCategories: "SubcategoriaFornecedor",
-  supplierSubCategory: "FornecedorSubcategoriaFornecedor",
-  assessment: "Avaliacoes"
-};
-
-// src/database/tables/supplier.ts
-var getSuppliers = () => __async(void 0, null, function* () {
-  try {
-    const [rows] = yield db.query(`SELECT DISTINCT 
-        t1.id,
-        t1.empresa,
-        t1.Categorias,
-        t1.estado,
-        t1.cidade,
-        t1.numTagsRef,
-        t3.nome FROM ${tableNames.supplier} as t1 RIGHT JOIN ${tableNames.supplierSubCategory} as t2
-        ON t1.id = t2.fornecedor_id RIGHT JOIN ${tableNames.subCategories} as t3 ON t3.id = t2.subcategoriafornecedor_id;`);
-    return rows;
-  } catch (err) {
-    console.log(err);
-  }
+exports.getSuppliers = getSuppliers;
+const getAllMention = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [rows] = yield service_1.db.query(`
+        SELECT 
+            t1.id as fornecedor_id, count(*) as mentions
+        FROM
+            ${tableNames_1.tableNames.supplier} as t1
+        INNER JOIN
+            wp_terms as t2
+        ON
+            t1.slug = t2.slug
+        INNER JOIN
+            wp_term_taxonomy as t3
+        ON
+            t2.term_id = t3.term_taxonomy_id
+        INNER JOIN
+            wp_term_relationships as t4
+        ON
+            t3.term_taxonomy_id = t4.term_taxonomy_id
+        INNER JOIN
+            wp_posts as t5
+        ON
+            t4.object_id = t5.id
+        AND
+            t5.post_status = 'publish' group by t1.id
+        `);
+        return rows;
+    }
+    catch (err) {
+        throw err;
+    }
 });
-var getSupplierByNeighborhoodCityState = (value) => __async(void 0, null, function* () {
-  try {
-    const [rows] = yield db.query(`
+const getInsprations = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [rows] = yield service_1.db.query(`
+        SELECT
+            t2.id as fornecedor_id, count(*) as inspirations
+        FROM
+            ${tableNames_1.tableNames.inspirations} as t1
+        INNER JOIN
+            ${tableNames_1.tableNames.supplier} as t2
+        ON
+            t1.tags
+        LIKE
+            CONCAT('%', t2.slug, '%') group by t2.id`);
+        return rows;
+    }
+    catch (err) {
+        throw err;
+    }
+});
+const getAverageOfAssessments = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        /* const [rows] = await db.query(`INSERT INTO ${tableNames.assessment} (fornecedorId, nomeAvaliador, avaliacao)
+        SELECT id, empresa, floor(rand()*5)+1
+        FROM ${tableNames.supplier}
+        `) */
+        return [];
+    }
+    catch (err) {
+        console.log(err);
+    }
+});
+exports.getAverageOfAssessments = getAverageOfAssessments;
+/* TODO: finalizar */
+const teste = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        /* const mentions = await getAllMention() */
+        const inspirations = yield getInsprations();
+        /* const [rows] = await db.query(`SELECT
+        (SELECT COUNT(*) FROM ${tableNames.supplier} WHERE id < 5) +
+        (SELECT COUNT(*) FROM ${tableNames.inspirations} as t1 INNER JOIN ${tableNames.supplier} as t2 WHERE t.id < 5)
+        AS SumCount`) */
+        return inspirations;
+    }
+    catch (err) {
+        console.log(err);
+    }
+});
+exports.teste = teste;
+const getSupplierByNeighborhoodCityState = (value) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [rows] = yield service_1.db.query(`
         SELECT DISTINCT bairro, cidade, estado,
         CASE WHEN bairro LIKE '%${value}%' THEN
         bairro WHEN cidade LIKE '%${value}%' THEN
         cidade WHEN estado LIKE '%${value}%'THEN
-        estado ELSE NULL END AS result FROM ${tableNames.supplier}
+        estado ELSE NULL END AS result FROM ${tableNames_1.tableNames.supplier}
         `);
-    return rows;
-  } catch (err) {
-    console.log(err);
-  }
+        return rows;
+    }
+    catch (err) {
+        console.log(err);
+    }
 });
-var getSupplierByCompanyCategorySubCategory = (company, category, subCategory) => __async(void 0, null, function* () {
-  try {
-    const [suppliers] = yield db.query(`SELECT t1.empresa, t1.Categorias,
+exports.getSupplierByNeighborhoodCityState = getSupplierByNeighborhoodCityState;
+const getSupplierByCompanyCategorySubCategory = (company, category, subCategory) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [suppliers] = yield service_1.db.query(`SELECT t1.empresa, t1.Categorias,
         CASE WHEN t1.empresa LIKE '%${company}%' THEN
         t1.empresa WHEN t1.Categorias LIKE '%${company}%' THEN t1.Categorias ELSE NULL END AS result
-        FROM ${tableNames.supplier} as t1;`);
-    const [subCategories] = yield db.query(`SELECT nome,
+        FROM ${tableNames_1.tableNames.supplier} as t1;`);
+        const [subCategories] = yield service_1.db.query(`SELECT nome,
         CASE WHEN nome LIKE '%${company}%' THEN
         nome ELSE NULL END AS result
-        FROM ${tableNames.subCategories};`);
-    return Object.assign(suppliers, subCategories);
-  } catch (err) {
-    console.log(err);
-  }
+        FROM ${tableNames_1.tableNames.subCategories};`);
+        return Object.assign(suppliers, subCategories);
+    }
+    catch (err) {
+        console.log(err);
+    }
 });
-var searchSupplierByResults = (place, category, caseMeMention) => __async(void 0, null, function* () {
-  try {
-    if (caseMeMention == "true") {
-      const [supplierResponse] = yield db.query(
-        `
-                SELECT 
-                t1.empresa,
-                t1.Categorias,
-                t1.estado,
-                t1.cidade,
-                t1.numTagsRef,
-                subCategorySupplier.nome FROM ${tableNames.supplier} as t1, ${tableNames.subCategories} as subCategorySupplier
-                WHERE numTagsRef > 0 AND
-                (t1.bairro LIKE ?
-                OR (t1.cidade LIKE ? 
-                OR (t1.estado LIKE ?))) AND (t1.empresa LIKE ? OR (t1.Categorias LIKE ? OR (subCategorySupplier.nome LIKE ?)));`,
-        [`%${place}%`, `%${place}%`, `%${place}%`, `%${category}%`, `%${category}%`, `%${category}%`]
-      );
-      return supplierResponse;
-    } else {
-      const [supplierResponse] = yield db.query(
-        `
+exports.getSupplierByCompanyCategorySubCategory = getSupplierByCompanyCategorySubCategory;
+const searchSupplierByResults = (place, caseMeMention) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (caseMeMention == 'true') {
+            const [supplierResponse] = yield service_1.db.query(`
                 SELECT
-                t1.empresa,
-                t1.Categorias,
-                t1.estado,
-                t1.cidade,
-                t1.numTagsRef,
-                subCategorySupplier.nome FROM ${tableNames.supplier} as t1, ${tableNames.subCategories} as subCategorySupplier
-                WHERE (t1.bairro LIKE ?
-                OR (t1.cidade LIKE ? 
-                OR (t1.estado LIKE ?))) AND (t1.empresa LIKE ? OR (t1.Categorias LIKE ? OR (subCategorySupplier.nome LIKE ?)));`,
-        [`%${place}%`, `%${place}%`, `%${place}%`, `%${category}%`, `%${category}%`, `%${category}%`]
-      );
-      return supplierResponse;
+                    t1.id,
+                    t1.empresa,
+                    t1.estado,
+                    t1.cidade,
+                    t1.numTagsRef,
+                    t4.nome,
+                    COUNT(t2.id) as totalAvaliacoes,
+                    ROUND(AVG(t2.avaliacao)) as mediaAvaliacao
+                FROM
+                    ${tableNames_1.tableNames.supplier} as t1
+                
+                LEFT JOIN
+                    ${tableNames_1.tableNames.assessment} as t2
+                ON 
+                    t1.id = t2.fornecedorId
+                LEFT JOIN
+                    ${tableNames_1.tableNames.supplierSubCategory} as t3
+                ON
+                    t1.id = t3.fornecedor_id
+                INNER JOIN
+                    ${tableNames_1.tableNames.subCategories} as t4
+                ON
+                    t4.id = t3.subcategoriafornecedor_id
+                WHERE
+                    t1.numTagsRef > 0
+                AND
+                    (t1.bairro REGEXP ?
+                OR
+                    (t1.cidade REGEXP ?
+                OR
+                    (t1.estado REGEXP ?)))
+                AND 
+                    ((t1.empresa REGEXP ?) OR (t1.Categorias REGEXP ?) OR (t4.nome REGEXP ?))
+                group by
+                    t1.id, t4.nome;`, [place, place, place, place, place, place]);
+            return supplierResponse;
+        }
+        else {
+            const [supplierResponse] = yield service_1.db.query(`
+                SELECT
+                    t1.id,
+                    t1.empresa,
+                    t1.estado,
+                    t1.cidade,
+                    t1.numTagsRef,
+                    t4.nome,
+                    COUNT(t2.id) as totalAvaliacoes,
+                    ROUND(AVG(t2.avaliacao)) as mediaAvaliacao
+                FROM
+                    ${tableNames_1.tableNames.supplier} as t1
+                
+                LEFT JOIN
+                    ${tableNames_1.tableNames.assessment} as t2
+                ON 
+                    t1.id = t2.fornecedorId
+                LEFT JOIN
+                    ${tableNames_1.tableNames.supplierSubCategory} as t3
+                ON
+                    t1.id = t3.fornecedor_id
+                INNER JOIN
+                    ${tableNames_1.tableNames.subCategories} as t4
+                ON
+                    t4.id = t3.subcategoriafornecedor_id
+                WHERE
+                    (t1.bairro REGEXP ?
+                OR
+                    (t1.cidade REGEXP ?
+                OR
+                    (t1.estado REGEXP ?)))
+                AND 
+                    ((t1.empresa REGEXP ?) OR (t1.Categorias REGEXP ?) OR (t4.nome REGEXP ?))
+                group by
+                    t1.id, t4.nome
+                `, [place, place, place, place, place, place]);
+            return supplierResponse;
+        }
     }
-  } catch (err) {
-    console.log(err);
-  }
+    catch (err) {
+        console.log(err);
+    }
 });
-var getSupplierByCity = (city) => __async(void 0, null, function* () {
-  try {
-    const [rows] = yield db.query(`
-        SELECT * FROM ${tableNames.supplier}
+exports.searchSupplierByResults = searchSupplierByResults;
+const getSupplierByCity = (city) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [rows] = yield service_1.db.query(`
+        SELECT * FROM ${tableNames_1.tableNames.supplier}
         WHERE cidade LIKE ?;`, [`%${city}%`]);
-    return rows;
-  } catch (err) {
-    console.log(err);
-  }
-});
-var getSupplierByState = (state) => __async(void 0, null, function* () {
-  try {
-    const [rows] = yield db.query(`
-        SELECT * FROM ${tableNames.supplier}
-        WHERE estado LIKE ?;`, [`%${state}%`]);
-    return rows;
-  } catch (err) {
-    console.log(err);
-  }
-});
-var getSupplier = (id) => __async(void 0, null, function* () {
-  try {
-    const [rows] = yield db.query(`
-        SELECT * FROM ${tableNames.supplier}
-        WHERE id = ?;`, [id]);
-    return rows;
-  } catch (err) {
-    console.log(err);
-  }
-});
-var getAllSubCategories = () => __async(void 0, null, function* () {
-  try {
-    const [rows] = yield db.query(`SELECT * FROM ${tableNames.subCategories};`);
-    return rows;
-  } catch (err) {
-    console.log(err);
-  }
-});
-var getAllSubCategoriesBySupplier = (fornecedorId) => __async(void 0, null, function* () {
-  try {
-    const [rows] = yield db.query(`
-        SELECT * FROM ${tableNames.supplierSubCategory}
-        WHERE fornecedor_id = ?;`, [fornecedorId]);
-    if (Object.keys(rows).length != 0) {
-      const response = yield db.query(`
-            SELECT * FROM ${tableNames.subCategories}
-            WHERE id = ?;`, [rows[0].subcategoriafornecedor_id]);
-      return response[0];
+        return rows;
     }
-    return [];
-  } catch (err) {
-    console.log(err);
-  }
+    catch (err) {
+        console.log(err);
+    }
 });
-var createSupplier = (data) => __async(void 0, null, function* () {
-  try {
-    const [result] = yield db.query(`
-        INSERT INTO ${tableNames.supplier} (
+exports.getSupplierByCity = getSupplierByCity;
+const getSupplierByState = (state) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [rows] = yield service_1.db.query(`
+        SELECT * FROM ${tableNames_1.tableNames.supplier}
+        WHERE estado LIKE ?;`, [`%${state}%`]);
+        return rows;
+    }
+    catch (err) {
+        console.log(err);
+    }
+});
+exports.getSupplierByState = getSupplierByState;
+const getSupplier = (id) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [rows] = yield service_1.db.query(`
+        SELECT * FROM ${tableNames_1.tableNames.supplier}
+        WHERE id = ?;`, [id]);
+        return rows;
+    }
+    catch (err) {
+        console.log(err);
+    }
+});
+exports.getSupplier = getSupplier;
+const createSupplier = (data) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [result] = yield service_1.db.query(`
+        INSERT INTO ${tableNames_1.tableNames.supplier} (
             empresa,
             website,
             contatoTelefone,
@@ -268,59 +327,48 @@ var createSupplier = (data) => __async(void 0, null, function* () {
             numTagsRef)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         `, [
-      data.empresa,
-      data.website,
-      data.contatoTelefone,
-      data.cnpj,
-      data.user_id,
-      data.criado,
-      data.modificado,
-      data.imagem,
-      data.descricao,
-      data.contatoEmail,
-      data.cep,
-      data.logradouro,
-      data.bairro,
-      data.cidade,
-      data.estado,
-      data.numero,
-      data.visivel,
-      data.slug,
-      data.contatoNome2,
-      data.contatoEmail2,
-      data.contatoTelefone2,
-      data.contatoTelefoneA2,
-      data.contatoNome3,
-      data.contatoEmail3,
-      data.contatoTelefone3,
-      data.contatoTelefoneA3,
-      data.metadescricao,
-      data.origemCadastro,
-      data.Categorias,
-      data.facebook,
-      data.instagram,
-      data.twitter,
-      data.pinterest,
-      data.youtube,
-      data.vimeo,
-      data.numTagsRef
-    ]);
-    let id = result.insertId;
-    return getSupplier(id);
-  } catch (err) {
-    console.log(err);
-  }
+            data.empresa,
+            data.website,
+            data.contatoTelefone,
+            data.cnpj,
+            data.user_id,
+            data.criado,
+            data.modificado,
+            data.imagem,
+            data.descricao,
+            data.contatoEmail,
+            data.cep,
+            data.logradouro,
+            data.bairro,
+            data.cidade,
+            data.estado,
+            data.numero,
+            data.visivel,
+            data.slug,
+            data.contatoNome2,
+            data.contatoEmail2,
+            data.contatoTelefone2,
+            data.contatoTelefoneA2,
+            data.contatoNome3,
+            data.contatoEmail3,
+            data.contatoTelefone3,
+            data.contatoTelefoneA3,
+            data.metadescricao,
+            data.origemCadastro,
+            data.Categorias,
+            data.facebook,
+            data.instagram,
+            data.twitter,
+            data.pinterest,
+            data.youtube,
+            data.vimeo,
+            data.numTagsRef
+        ]);
+        let id = result.insertId;
+        return (0, exports.getSupplier)(id);
+    }
+    catch (err) {
+        console.log(err);
+    }
 });
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
-  createSupplier,
-  getAllSubCategories,
-  getAllSubCategoriesBySupplier,
-  getSupplier,
-  getSupplierByCity,
-  getSupplierByCompanyCategorySubCategory,
-  getSupplierByNeighborhoodCityState,
-  getSupplierByState,
-  getSuppliers,
-  searchSupplierByResults
-});
+exports.createSupplier = createSupplier;
