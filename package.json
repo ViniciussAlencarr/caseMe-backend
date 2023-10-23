@@ -13,7 +13,9 @@
     "build": "npx tsc"
   },
   "dependencies": {
+    "@types/bluebird": "^3.5.41",
     "@types/crypto-js": "^4.1.2",
+    "bluebird": "^3.7.2",
     "cors": "^2.8.5",
     "crypto-js": "^4.1.1",
     "dotenv": "^16.3.1",

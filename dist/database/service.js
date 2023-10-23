@@ -6,4 +6,5 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.db = void 0;
 const mysql2_1 = __importDefault(require("mysql2"));
 const config_1 = __importDefault(require("./config"));
-exports.db = mysql2_1.default.createConnection(config_1.default).promise();
+const pool = mysql2_1.default.createPool(config_1.default);
+exports.db = pool.promise();
