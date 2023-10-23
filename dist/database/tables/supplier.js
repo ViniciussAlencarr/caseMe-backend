@@ -45,7 +45,7 @@ const getSuppliers = (queryParams) => __awaiter(void 0, void 0, void 0, function
         return rows;
     }
     catch (err) {
-        console.log(err);
+        console.log('deu ruim');
     }
 });
 exports.getSuppliers = getSuppliers;

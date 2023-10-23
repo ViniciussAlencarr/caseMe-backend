@@ -35,7 +35,7 @@ export const getSuppliers = async (queryParams: any) => {
         [parseInt(queryParams.perPage), parseInt(queryParams.page)])
         return rows
     } catch (err) {
-        console.log(err)
+        console.log('deu ruim')
     }
 }
 
